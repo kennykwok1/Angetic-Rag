@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.venv/
+faiss_index/
+.DS_Store
+Ballista_仕様書リスト.xlsx
