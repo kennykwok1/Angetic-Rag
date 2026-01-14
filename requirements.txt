@@ -7,3 +7,6 @@ chromadb
 python-dotenv
 langchain-huggingface
 sentence-transformers
+faiss-cpu
+pandas
+openpyxl

@@ -19,7 +19,8 @@ def test_flow():
         "plan": [],
         "context": "",
         "steps": [],
-        "iteration_count": 0
+        "iteration_count": 0,
+        "is_clarified": True
     }
 
     print(f"Testing with query: {query}")
