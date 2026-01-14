@@ -11,6 +11,63 @@ llm = ChatOpenAI(
     api_key=os.getenv("DEEPSEEK_API_KEY")
 )
 
+def clarifier_node(state: AgentState):
+    step = state.get("clarification_step", 0)
+    # 如果外部已经标记为已澄清（例如用户选择了跳过引导），则直接通过
+    if state.get("is_clarified", False):
+        return {"is_clarified": True, "clarification_step": step}
+
+    
+    print(f"\n>>> [Clarifier Expert] Analyzing query (Step {step}/3): {state['task'][:50]}...")
+    
+    # 如果已经达到 3 步，则标记为已澄清
+    if step >= 3:
+        print(">>> [Clarifier Expert] Max steps reached. Proceeding to research.")
+        return {"is_clarified": True, "clarification_step": step}
+
+    prompt = f"""
+    你是一名资深游戏策划与式样书专家。你的任务是帮助用户将其模糊的需求具体化，以便后续能精准检索式样书。
+    
+    当前用户问题: {state['task']}
+    当前引导步数: {step}/3 (请务必在3步内完成引导)
+    
+    逻辑要求:
+    1. 评估当前问题是否已经足够具体（包含：功能模块、具体子系统、所需信息类型）。
+    2. 如果不够具体，请提出一个专业的、针对性强的引导问题，并提供 3-4 个具体的预设选项供用户选择。
+    3. 选项中必须包含一个编号为 0 的选项：“直接开始检索 (跳过后续引导)”。
+    
+    返回 JSON 格式:
+    {{
+      "is_clarified": false (如果还需要引导) 或 true (如果已经足够具体),
+      "message": "引导性提问内容",
+      "options": ["0: 直接开始检索", "1: 选项A", "2: 选项B", ...],
+      "reasoning": "为什么需要这一步引导"
+    }}
+    
+    请仅返回 JSON 格式。
+    """
+    
+    try:
+        response = llm.invoke(prompt)
+        content = str(response.content).strip()
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        result = json.loads(content)
+        
+        # 如果 LLM 认为已明确，则标记为 True
+        if result.get("is_clarified", False):
+            return {"is_clarified": True, "clarification_step": step}
+            
+        return {
+            "is_clarified": False,
+            "clarification_message": result.get("message", "请提供更多细节。"),
+            "clarification_options": result.get("options", ["0: 直接开始检索"]),
+            "clarification_step": step + 1
+        }
+    except Exception as e:
+        print(f">>> [Clarifier] Error: {e}. Proceeding.")
+        return {"is_clarified": True}
+
 def planner_node(state: AgentState):
     print(f"\n>>> [Planner] Analyzing task: {state['task'][:50]}...")
     
