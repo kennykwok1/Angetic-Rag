@@ -5,3 +5,5 @@ langchain-community
 tavily-python
 chromadb
 python-dotenv
+langchain-huggingface
+sentence-transformers

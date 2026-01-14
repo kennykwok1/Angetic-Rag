@@ -17,31 +17,34 @@ def clarifier_node(state: AgentState):
     if state.get("is_clarified", False):
         return {"is_clarified": True, "clarification_step": step}
 
+    print(f"\n>>> [Clarifier Expert] Analyzing query (Step {step + 1}/3): {state['task'][:50]}...")
     
-    print(f"\n>>> [Clarifier Expert] Analyzing query (Step {step}/3): {state['task'][:50]}...")
-    
-    # 如果已经达到 3 步，则标记为已澄清
+    # 如果已经达到 3 步，则强制标记为已澄清，不再询问
     if step >= 3:
         print(">>> [Clarifier Expert] Max steps reached. Proceeding to research.")
         return {"is_clarified": True, "clarification_step": step}
 
     prompt = f"""
-    你是一名资深游戏策划与式样书专家。你的任务是帮助用户将其模糊的需求具体化，以便后续能精准检索式样书。
+    你是一名资深游戏策划与式样书专家。你的任务是评估用户的问题是否足够具体，以便后续能精准检索式样书。
     
     当前用户问题: {state['task']}
-    当前引导步数: {step}/3 (请务必在3步内完成引导)
+    当前引导步数: {step}/3
     
     逻辑要求:
-    1. 评估当前问题是否已经足够具体（包含：功能模块、具体子系统、所需信息类型）。
-    2. 如果不够具体，请提出一个专业的、针对性强的引导问题，并提供 3-4 个具体的预设选项供用户选择。
-    3. 选项中必须包含一个编号为 0 的选项：“直接开始检索 (跳过后续引导)”。
+    1. **评估具体性**：判断当前问题是否已经足够具体（必须包含或隐含：明确的功能模块、具体子系统、所需信息类型）。
+    2. **决策**：
+       - 如果问题已经足够具体，或者你认为已经不需要进一步引导，请设置 "is_clarified": true。
+       - 如果问题仍然模糊或过于宽泛，且当前步数未达到3步，请设置 "is_clarified": false，并提出一个专业的引导问题。
+    3. **引导建议**：
+       - 如果需要引导，请提供 3-4 个具体的预设选项供用户选择。
+       - 选项中必须包含一个编号为 0 的选项：“直接开始检索 (跳过后续引导)”。
     
     返回 JSON 格式:
     {{
-      "is_clarified": false (如果还需要引导) 或 true (如果已经足够具体),
-      "message": "引导性提问内容",
+      "is_clarified": boolean,
+      "message": "引导性提问内容 (如果 is_clarified 为 false)",
       "options": ["0: 直接开始检索", "1: 选项A", "2: 选项B", ...],
-      "reasoning": "为什么需要这一步引导"
+      "reasoning": "为什么判定为已具体或需要进一步引导的详细理由"
     }}
     
     请仅返回 JSON 格式。
@@ -56,8 +59,10 @@ def clarifier_node(state: AgentState):
         
         # 如果 LLM 认为已明确，则标记为 True
         if result.get("is_clarified", False):
+            print(f">>> [Clarifier Expert] Query is specific enough. Reasoning: {result.get('reasoning')}")
             return {"is_clarified": True, "clarification_step": step}
             
+        print(f">>> [Clarifier Expert] More info needed. Reasoning: {result.get('reasoning')}")
         return {
             "is_clarified": False,
             "clarification_message": result.get("message", "请提供更多细节。"),
@@ -65,7 +70,7 @@ def clarifier_node(state: AgentState):
             "clarification_step": step + 1
         }
     except Exception as e:
-        print(f">>> [Clarifier] Error: {e}. Proceeding.")
+        print(f">>> [Clarifier] Error parsing LLM response: {e}. Proceeding.")
         return {"is_clarified": True}
 
 def planner_node(state: AgentState):
