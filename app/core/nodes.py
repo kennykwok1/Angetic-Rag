@@ -112,7 +112,7 @@ def executor_node(state: AgentState):
     for query in state["plan"]:
         local_res = local_search(query)
         web_res = web_search(query)
-        new_context += f"\n\n### Query: {query}\n{local_res}\n{web_res}"
+        new_context += f"\n\n### Query: {query}\n#### Local Search Results:\n{local_res}\n#### Web Search Results:\n{web_res}"
 
     return {"context": new_context, "iteration_count": state["iteration_count"] + 1}
 
@@ -150,8 +150,14 @@ def summarizer_node(state: AgentState):
 
     prompt = f"""
     你是一个仕様書检索助手。请根据以下检索到的知识内容，回答用户的问题。
-    检索内容包含仕様書链接和UI仕様链接，请在回答中包含这些链接。
-    若无相关内容请如实说明。
+    检索内容包含：
+    1. 内部仕様書链接和UI仕様链接 (标记为 "链接:")
+    2. 互联网搜索结果 (标记为 "(Source: ...)")
+
+    请在回答中严格遵守以下要求：
+    - 对于来自内部仕様書的内容，必须保留并列出对应的仕様書链接或UI仕様链接，推荐使用 Markdown 链接格式。
+    - 对于来自互联网搜索 (Web Search) 的内容，总结时必须包含其对应的来源链接 (Source Link)，并以 Markdown 链接格式呈现。
+    - 若无相关内容请如实说明。
 
     用户问题: {state["task"]}
     

@@ -72,10 +72,16 @@ def local_search(query: str) -> str:
     docs = vs.similarity_search(query, k=3)
     results = []
     for doc in docs:
+        link = doc.metadata.get('仕様書链接', 'N/A')
+        if link != 'N/A' and link.startswith('http'):
+            link_str = f"[{link}]({link})"
+        else:
+            link_str = link
         res = (
-            f"内容: {doc.page_content}\n链接: {doc.metadata.get('仕様書リンク', 'N/A')}"
+            f"内容: {doc.page_content}\n链接: {link_str}"
         )
         results.append(res)
+
 
     return "\n---\n".join(results)
 
@@ -89,6 +95,6 @@ def web_search(query: str, mock: bool = False) -> str:
     results = search.invoke(query)
 
     formatted_res = "\n".join(
-        [f"- {r['content']} (Source: {r['url']})" for r in results]
+        [f"- {r['content']} (Source: [{r['url']}]({r['url']}))" for r in results]
     )
     return formatted_res
